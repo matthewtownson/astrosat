@@ -22,12 +22,7 @@ class Plot:
         except FileExistsError:
             pass
         # plt.style.use('dark_background')
-        if AS.parameters.radius == 180:
-            ## full sky
-            AS.markersize = 1.
-        else:
-            AS.markersize = 5
-
+        AS.markersize = 1. if AS.parameters.radius == 180 else 5
         AS.fig = plt.figure('Sky field', figsize=(7, 6))
         AS.axSky = AS.fig.add_subplot(111)  # , projection='polar')
 
@@ -37,12 +32,12 @@ class Plot:
         Mmax = self.AS.parameters.Mmax
         for i_d in range(len(self.AS.stars)):
             RAstar = self.AS.stars[i_d][1]
-            DECstar = self.AS.stars[i_d][2]
             RAanglediff = (self.AS.parameters.RA - RAstar + 180 + 360) % 360 - 180
-            DECanglediff = (self.AS.parameters.DEC - DECstar + 180 + 360) % 360 - 180
-
             # over sample as field is square
             if abs(RAanglediff) < self.AS.parameters.radius*1.5:
+                DECstar = self.AS.stars[i_d][2]
+                DECanglediff = (self.AS.parameters.DEC - DECstar + 180 + 360) % 360 - 180
+
                 if abs(DECanglediff) < self.AS.parameters.radius*1.5:
                     mag_star = self.AS.stars[i_d][3]
                     # r = 1+1*(Mmin-mag_star)/float(Mmax-Mmin)
@@ -75,10 +70,8 @@ class Plot:
     def plot_legend(self, labels):
         Mmin = self.AS.parameters.Mmin
         Mmax = self.AS.parameters.Mmax
-        # add legend to plot
-        label_list = []
         p1, = plt.plot([],[], 'o', color=str(0), markersize=self.AS.markersize*(0), label='stars')
-        label_list.append(p1)
+        label_list = [p1]
         for label in labels:
             # r = 1+1*(Mmin-label)/float(Mmax-Mmin)
             r = abs(-1*(Mmin-label)/float(Mmax-Mmin))

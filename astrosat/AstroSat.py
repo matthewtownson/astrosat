@@ -39,10 +39,10 @@ class AstroSat:
         '''
         timeStamp = self.parameters.date.timestamp()
         timeNow = datetime.datetime.now().timestamp()
-        timeTempList=[]
         if forceNew == 0:
             fnlist = os.listdir(self.parameters.TLEdir)
             fnlist.sort()
+            timeTempList=[]
             for fn in fnlist:
                 # make a list of archived TLE files
                 if '.dat' in fn:
@@ -50,7 +50,7 @@ class AstroSat:
                     typeTemp = fn.split('_')[1][:-4]
                     if typeTemp == satellite_type:
                         timeTempList.append(timeTemp)
-            if len(timeTempList)>0:
+            if timeTempList:
                 if len(timeTempList)==1:
                     # if only one file in archive
                     timeTemp = timeTempList[0]
@@ -68,33 +68,30 @@ class AstroSat:
                     # read TLE for file
                     fn = '%i_%s.dat' % (timeTemp,satellite_type)
                     if self.parameters.verbose:
-                        print('Loading TLE:%s from file: %s'%(satellite_type,fn))
+                        print(f'Loading TLE:{satellite_type} from file: {fn}')
                     satTLEs = []
-                    with open(self.parameters.TLEdir+'/'+fn,'r') as f:
-                        for line in f:
-                            satTLEs.append(line.split(','))
+                    with open(f'{self.parameters.TLEdir}/{fn}', 'r') as f:
+                        satTLEs.extend(line.split(',') for line in f)
                     f.close()
-            elif len(timeTempList)==0:
+            else:
                 # no files in archive - download new ones
                 forceNew = 1
-                        
+
         # download and archive new TLEs
         if forceNew == 1:
             if self.parameters.verbose:
-                print('Downloading TLE:%s'%satellite_type)
+                print(f'Downloading TLE:{satellite_type}')
 
-            TLE_URL = 'https://www.celestrak.com/NORAD/elements/%s.txt'%(satellite_type)
+            TLE_URL = f'https://www.celestrak.com/NORAD/elements/{satellite_type}.txt'
             TLEs = urlopen(TLE_URL)
             TLEs = [item.strip() for item in TLEs]
             satTLEs = [(TLEs[i].decode('utf-8'), TLEs[i+1].decode('utf-8'), TLEs[i+2].decode('utf-8')) for i in numpy.arange(0, len(TLEs)-2, 3)]
-        
+
             # write to file
             fn = '%i_%s.dat' %(datetime.datetime.now().timestamp(),satellite_type)
-            f = open(self.parameters.TLEdir+'/'+fn,'w')
-            for TLE in satTLEs:
-                f.write('%s,%s,%s\n' %(TLE[0],TLE[1],TLE[2]))
-            f.close()
-
+            with open(f'{self.parameters.TLEdir}/{fn}', 'w') as f:
+                for TLE in satTLEs:
+                    f.write('%s,%s,%s\n' %(TLE[0],TLE[1],TLE[2]))
         return satTLEs
 
     def get_satellites(self,satTLEs):
@@ -113,7 +110,6 @@ class AstroSat:
         self.parameters.obs.date = date_temp
 
         sat.compute(self.parameters.obs)
-        sat_name = sat.name
         RA_sat = sat.ra
         DEC_sat = sat.dec
 
@@ -124,7 +120,7 @@ class AstroSat:
             if abs(DEC_angle_diff) < self.search_radius:
 
                 self.sun.compute(self.parameters.obs)
-                
+
                 if Fmodel=='diffuseSpherical':
                     # solar phase angle
                     a = self.sun.earth_distance * 1.496e+11  # distance sun from observer (Km)
@@ -141,7 +137,7 @@ class AstroSat:
                     # https://commons.erau.edu/edt/212
                     F = (2/(3*numpy.pi**2))*(numpy.sin(phase_angle) + (numpy.pi-phase_angle)*numpy.cos(phase_angle))
 
-                elif Fmodel==None:
+                elif Fmodel is None:
                     # no solar phase angle dependence
                     F = 1
 
@@ -155,7 +151,7 @@ class AstroSat:
 
                     # calculate directly from TLE
                     gamma = 0.12 * sat.range/sat.elevation
-                    
+
                 # "Optical Tracking and Spectral Characterization of Cubesats for Operational Missions"
                 # Gasdia, Forrest, (2016). PhD Dissertations and Master's Theses. 212.
                 # https://commons.erau.edu/edt/212
@@ -173,18 +169,19 @@ class AstroSat:
                         # not if centre of Earth observer
                         mag_sat = None
 
+                sat_name = sat.name
                 if sat_name not in satDict.keys():
-                    satDict[sat_name] = {}
-                    satDict[sat_name]['RA'] = []
-                    satDict[sat_name]['DEC'] = []
-                    satDict[sat_name]['MAG'] = []
-                    satDict[sat_name]['Time'] = []
-                    satDict[sat_name]['sunElev'] = []
-                    satDict[sat_name]['ALT'] = []
-                    satDict[sat_name]['AZ'] = []
-                    satDict[sat_name]['RANGE'] = []
-                    satDict[sat_name]['ELEV'] = []
-
+                    satDict[sat_name] = {
+                        'RA': [],
+                        'DEC': [],
+                        'MAG': [],
+                        'Time': [],
+                        'sunElev': [],
+                        'ALT': [],
+                        'AZ': [],
+                        'RANGE': [],
+                        'ELEV': [],
+                    }
                 satDict[sat_name]['RA'].append(RA_sat*12./numpy.pi)
                 satDict[sat_name]['DEC'].append(DEC_sat*180/numpy.pi)
                 satDict[sat_name]['MAG'].append(mag_sat)
@@ -209,17 +206,17 @@ class AstroSat:
                 RA_sat = satellite_dictionary[i_sat]['RA']
                 DEC_sat = satellite_dictionary[i_sat]['DEC']
                 if len(satellite_dictionary[i_sat]['Time']) > 1:
-                    time_sat = []
-                    for timeTemp in satellite_dictionary[i_sat]['Time']:
-                        time_sat.append(timeTemp.timestamp())
-
+                    time_sat = [
+                        timeTemp.timestamp()
+                        for timeTemp in satellite_dictionary[i_sat]['Time']
+                    ]
                     # find transit time through FoV
                     f = scipy.interpolate.interp1d(numpy.array(RA_sat)*180/12., DEC_sat, fill_value='extrapolate',kind='slinear')
                     DECextrap = f(RAtemp)
 
                     RA1 = RAtemp[numpy.argmin(abs(DECextrap-(self.parameters.DEC-self.parameters.radius)))]
                     RA2 = RAtemp[numpy.argmin(abs(DECextrap-(self.parameters.DEC+self.parameters.radius)))]
-                    
+
                     if RA1 < self.parameters.RA-self.parameters.radius:
                         RAmin = self.parameters.RA-self.parameters.radius
                     elif RA1 > self.parameters.RA+self.parameters.radius:
@@ -261,12 +258,12 @@ class AstroSat:
                             except:
                                 # satellite outside range
                                 pass 
-                # else:
-                #     # only one event
-                #     if self.parameters.RA+self.parameters.radius > RA_sat[0]*180./12. > self.parameters.RA-self.parameters.radius:
-                #         if self.parameters.DEC+self.parameters.radius > DEC_sat[0] > self.parameters.DEC-self.parameters.radius:
-                #             sat_table.append([i_sat, datetime.datetime.strftime(satellite_dictionary[i_sat]['Time'][0], '%H:%M:%S'), 0, satellite_dictionary[i_sat]['MAG'][0]])
-        if len(sat_table)>0:
+                        # else:
+                        #     # only one event
+                        #     if self.parameters.RA+self.parameters.radius > RA_sat[0]*180./12. > self.parameters.RA-self.parameters.radius:
+                        #         if self.parameters.DEC+self.parameters.radius > DEC_sat[0] > self.parameters.DEC-self.parameters.radius:
+                        #             sat_table.append([i_sat, datetime.datetime.strftime(satellite_dictionary[i_sat]['Time'][0], '%H:%M:%S'), 0, satellite_dictionary[i_sat]['MAG'][0]])
+        if sat_table:
             print("{: <30} {: <15} {: <15}{: <10}".format(*['Name', 'Time (UTC)', 'Duration (s)', 'Mag (V)']))
             for row in sat_table:
                 print("{: <30} {: <15} {: <15.1f}{: <10.2f}".format(*row[:-2]))
@@ -339,7 +336,7 @@ class AstroSat:
             #  
             if self.parameters.verbose:
                 print('Using Bright Star Catalogue')
-            with open(os.path.dirname(__file__)+"/data/bsc.dat",'r') as f:     
+            with open(f"{os.path.dirname(__file__)}/data/bsc.dat", 'r') as f:     
                 for line in f:
                     # Loop through the Yale Bright Star Catalog, line by line
                     # Ignore blank lines and comment lines
@@ -367,6 +364,6 @@ class AstroSat:
                     if dec_neg:
                         dec = -dec
                     stars.append([hd,ra,dec,mag])
-            
+
         return stars
 
