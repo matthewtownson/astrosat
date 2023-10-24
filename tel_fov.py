@@ -2,21 +2,20 @@
 # Plot field of view of telescope with satellite trails overlaid
 # Observer and Field parameters defined in params.py
 
-import datetime
-from tqdm import tqdm
 from astrosat import AstroSat
 from astrosat import Plot
 from astrosat import Parameters
+from astrosat import Stars
 
 parameters = Parameters("params.yaml")
 AS = AstroSat(parameters)
+stars = Stars(parameters)
 
 # timeStep = 5  # 5 second time steps 
 
 # get satellite positions
 # use active satellites and visual objects (rocket bodies)
-satTLEs = AS.get_TLEs('active')
-satTLEs += AS.get_TLEs('visual')
+satTLEs = AS.get_TLEs('ACTIVE')
 sats = AS.get_satellites(satTLEs)
 
 satDict = AS.find_intercept_sats(Fmodel=None)
@@ -25,7 +24,7 @@ satDict = AS.find_intercept_sats(Fmodel=None)
 sat_table = AS.print_satellite_dictionary(satDict)
 
     # plot field
-plot = Plot(AS)
+plot = Plot(AS, stars)
 if len(sat_table)>0:
     plot.plot_satellites(sat_table)
 plot.plot_stars()

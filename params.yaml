@@ -4,12 +4,12 @@ RA : '18:36:56.6'
 DEC : '+38:47:08.6'
 
 # Date
-year : 2021
-month : 9
-day : 2
-hour : 20
+year : 2023
+month : 10
+day : 16
+hour : 22
 minute : 00
-seconds : 0
+seconds : 00
 
 # satellite - only starlink for now
 # satArea : 3.14159  # https://www.aanda.org/articles/aa/full_html/2020/04/aa37501-20/aa37501-20.html
@@ -21,11 +21,11 @@ cross_section: 0.075
 # Durham
 lat : 54.7753
 lon : 1.5849
-alt : 100.
+alt : 100. # 100.
 
 # FoV
-radius : 2.  # degrees
-duration : 1000 #3600  # seconds
+radius : 60.  # degrees
+duration : 300 #3600  # seconds
 
 # Plots
 Mmin : 0
