@@ -23,7 +23,7 @@ satDict = AS.find_intercept_sats(Fmodel=None)
 # print satellite dictionary
 sat_table = AS.print_satellite_dictionary(satDict)
 
-    # plot field
+# plot field
 plot = Plot(AS, stars)
 if len(sat_table)>0:
     plot.plot_satellites(sat_table)

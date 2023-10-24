@@ -1,6 +1,5 @@
-# author: James Osborn, james.osborn@durham.ac.uk
-# MJT
-# license?
+# authors: James Osborn, james.osborn@durham.ac.uk
+#          Matthew Townson, matthew.townson@northumbria.ac.uk
 
 import numpy
 import ephem
@@ -8,7 +7,6 @@ import datetime
 import math
 import scipy.interpolate
 import os
-from tqdm import tqdm
 import warnings
 from rich.progress import track
 from urllib.request import urlopen
@@ -70,11 +68,10 @@ class AstroSat:
             with open(f'{self.parameters.TLEdir}/{fn}', 'r') as f:
                 satTLEs.extend(line.split(',') for line in f)
         else:
-            satTLEs = self._extracted_from_get_TLEs_46(satellite_type)
+            satTLEs = self.download_TLEs(satellite_type)
         return satTLEs
 
-    # TODO Rename this here and in `get_TLEs`
-    def _extracted_from_get_TLEs_46(self, satellite_type, format='TLE'):
+    def download_TLEs(self, satellite_type, format='TLE'):
         if self.parameters.verbose:
             print(f'Downloading TLE:{satellite_type}')
         TLE_URL = f'https://celestrak.org/NORAD/elements/gp.php?GROUP={satellite_type}&FORMAT={format}'
@@ -83,10 +80,7 @@ class AstroSat:
         celestrak.close()
 
         # Clean raw TLE data
-        result = []
-        for i in numpy.arange(0, len(TLEs)-2, 3):
-            print(i)
-            result.append(TLEs[i].decode('utf-8'), TLEs[i + 1].decode('utf-8'), TLEs[i + 2].decode('utf-8'),)
+        result = [(TLEs[i].decode('utf-8'), TLEs[i+1].decode('utf-8'), TLEs[i+2].decode('utf-8')) for i in numpy.arange(0, len(TLEs)-2, 3)]
 
         # write TLE data to file
         fn = '%i_%s.dat' %(datetime.datetime.now().timestamp(), satellite_type)
@@ -247,24 +241,16 @@ class AstroSat:
                                 mag_sat=satDict[i_sat]['MAG'][0]
 
                                 time0 = numpy.min(timeRA)
-                                if time0 > self.parameters.date.timestamp() and time0 < self.parameters.date.timestamp()+self.parameters.duration:
-                                    # print('in the time window')
-                                    if satDict[i_sat]['RA'][0]*180/12.<RAmax and satDict[i_sat]['RA'][0]*180./12.>RAmin:
-                                        # print('in the fov RA')
-                                        if satDict[i_sat]['DEC'][0]<DECmax and satDict[i_sat]['DEC'][0]>DECmin:
-                                            # print('in the fov DEC')
-                                        # intercept FOV
+                                if self.parameters.date.timestamp()+self.parameters.duration > time0 > self.parameters.date.timestamp():
+                                    # intercept FOV
+                                    if satDict[i_sat]['RA'][0]*180/12.< RAmax and satDict[i_sat]['RA'][0]*180./12. > RAmin:
+                                        if satDict[i_sat]['DEC'][0] < DECmax and satDict[i_sat]['DEC'][0] > DECmin:
                                             if mag_sat != None:
-                                                # print('adding to table')
                                                 sat_table.append([i_sat, datetime.datetime.strftime(datetime.datetime.fromtimestamp(time0),'%H:%M:%S'), abs(timeRA[1]-timeRA[0]), mag_sat, [RAmin,RAmax],[DECmin,DECmax]])
                             except Exception:
                                 # satellite outside range
-                                pass 
-                # else:
-                #     # only one event
-                #     if self.parameters.RA+self.parameters.radius > RA_sat[0]*180./12. > self.parameters.RA-self.parameters.radius:
-                #         if self.parameters.DEC+self.parameters.radius > DEC_sat[0] > self.parameters.DEC-self.parameters.radius:
-                #             sat_table.append([i_sat, datetime.datetime.strftime(satellite_dictionary[i_sat]['Time'][0], '%H:%M:%S'), 0, satellite_dictionary[i_sat]['MAG'][0]])
+                                pass
+
         if len(sat_table)>0:
             print("{: <30} {: <15} {: <15}{: <10}".format(*['Name', 'Time (UTC)', 'Duration (s)', 'Mag (V)']))
             for row in sat_table:
@@ -273,17 +259,20 @@ class AstroSat:
             print("No satellite intercept predicted")
         return sat_table
 
-    def find_intercept_sats(self,Fmodel):
+    def find_intercept_sats(self, Fmodel, timeStep=10):
         '''
-        do recursive search - 10 sec steps to find small number potential sats and time window then 1 sec
+        do recursive search -  default 10 sec steps to find small number potential sats and time window then 1 sec
         '''
-        timeStep = 10
         sats = self.sats
+        cadence = 'low resolution'
 
-        satDict = {}
-        for istep in track(range(0, int(self.parameters.duration), timeStep), description='propagating satellites...'):
-            dateTemp = self.parameters.date+datetime.timedelta(seconds=istep)
-            for isat in sats.keys():
-                satDict = self.process_satellite(sats[isat], dateTemp, Fmodel, satDict)
+        for timeStep in [timeStep, 1]:
+            satDict = {}
+            for istep in track(range(0, int(self.parameters.duration), timeStep), description=f'propagating satellites ({cadence})...'):
+                dateTemp = self.parameters.date+datetime.timedelta(seconds=istep)
+                for isat in sats.keys():
+                    satDict = self.process_satellite(sats[isat], dateTemp, Fmodel, satDict)
+            sats = {sat_key:sats[sat_key] for sat_key in satDict.keys()}
+            cadence = 'high resolution'
 
         return satDict
