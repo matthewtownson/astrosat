@@ -60,7 +60,6 @@ class Plot:
             mag_sat = sat_dict[i_sat][3]
             if mag_sat is not None:
                 r = abs(-1*(Mmin-mag_sat)/float(Mmax-Mmin))
-                print(r)
                 r = numpy.clip(r, 1e-3, 0.9)
                 if len(sat_dict[i_sat][4])==1:
                     plt.plot(sat_dict[i_sat][4], sat_dict[i_sat][5], 'x', color='red',markersize=(r*-1+1) * self.markersize)
@@ -70,7 +69,6 @@ class Plot:
                     RAtemp = numpy.arange(self.AS.parameters.RA-self.AS.parameters.radius,
                                             self.AS.parameters.RA+self.AS.parameters.radius, 1./3600.)
                     DECextrap = f(RAtemp)
-                    print('plotting')
                     plt.plot(RAtemp*12./180., DECextrap, linestyle='--', color='red', linewidth=(r*-1+1)* self.markersize)
 
     def plot_legend(self, labels):

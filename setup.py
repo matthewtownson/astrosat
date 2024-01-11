@@ -15,7 +15,12 @@ setup(
     package_data={'astrosat': ['data/bsc.dat']},
     description='A tool for forecasting satellite transits in astronomical observations',
     version='1.0.1',
-    install_requires=[
+    install_requires=['scipy',
+                      'ephem',
+                      'matplotlib',
+                      'rich',
+                      'astropy',
+                      'astroquery',
     ],
     classifiers=[
         "Programming Language :: Python",

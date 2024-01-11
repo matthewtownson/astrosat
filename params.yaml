@@ -1,12 +1,14 @@
 # Target
 # example: Vega J2000
-RA : '18:36:56.6'
-DEC : '+38:47:08.6'
+# RA : '18:36:56.6'
+# DEC : '+38:47:08.6'
+ALT: '40:0:0'
+AZ: '90:0:0'
 
 # Date
-year : 2023
-month : 10
-day : 16
+year : 2024
+month : 1
+day : 8
 hour : 22
 minute : 00
 seconds : 00
@@ -24,8 +26,8 @@ lon : 1.5849
 alt : 100. # 100.
 
 # FoV
-radius : 60.  # degrees
-duration : 300 #3600  # seconds
+radius : 10.  # degrees
+duration : 3600 #3600  # seconds
 
 # Plots
 Mmin : 0
@@ -35,4 +37,7 @@ plotDir : './plots_field/'
 fdir: "./plots"
 TLEdir: "./TLE"
 
+# logging
 verbose: 1
+logfile: 'log.txt'
+log_level: 'DEBUG'

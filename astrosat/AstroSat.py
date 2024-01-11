@@ -10,6 +10,7 @@ import os
 import warnings
 from rich.progress import track
 from urllib.request import urlopen
+import logging
 warnings.filterwarnings("ignore")
 
 from .parameters import Parameters
@@ -23,6 +24,8 @@ class AstroSat:
             self.parameters = parameters
         self.search_radius = numpy.max([15.,self.parameters.radius])
         self.sun = ephem.Sun()
+
+        logging.basicConfig(filename=self.parameters.logfile, encoding='utf-8', level=self.parameters.log_level)
 
     def get_TLEs(self, satellite_type='ACTIVE', forceNew=0):
         '''
@@ -192,71 +195,83 @@ class AstroSat:
         '''
         sat_table = []
         RAtemp = numpy.arange(self.parameters.RA-self.parameters.radius, self.parameters.RA+self.parameters.radius, 1./3600.)
-        for i_sat in track(satellite_dictionary.keys(), description='printing satellites...'):
-            mag_sat = satellite_dictionary[i_sat]['MAG'][0]
-            if mag_sat is not None:
-                RA_sat = satellite_dictionary[i_sat]['RA']
-                DEC_sat = satellite_dictionary[i_sat]['DEC']
-                if len(satellite_dictionary[i_sat]['Time']) > 1:
-                    time_sat = []
-                    for timeTemp in satellite_dictionary[i_sat]['Time']:
-                        time_sat.append(timeTemp.timestamp())
+        if self.parameters.verbose == 1:
+            for i_sat in track(satellite_dictionary.keys(), description='printing satellites...'):
+                sat_table = self.print_satellite_dictionary_loop(i_sat, satellite_dictionary, RAtemp, sat_table)
 
-                    # find transit time through FoV
-                    f = scipy.interpolate.interp1d(numpy.array(RA_sat)*180/12., DEC_sat, fill_value='extrapolate',kind='slinear')
-                    DECextrap = f(RAtemp)
-
-                    RA1 = RAtemp[numpy.argmin(abs(DECextrap-(self.parameters.DEC-self.parameters.radius)))]
-                    RA2 = RAtemp[numpy.argmin(abs(DECextrap-(self.parameters.DEC+self.parameters.radius)))]
-                    
-                    if RA1 < self.parameters.RA-self.parameters.radius:
-                        RAmin = self.parameters.RA-self.parameters.radius
-                    elif RA1 > self.parameters.RA+self.parameters.radius:
-                        RAmin = self.parameters.RA+self.parameters.radius
-                    else:
-                        RAmin = RA1
-                    if RA2 < self.parameters.RA-self.parameters.radius:
-                        RAmax = self.parameters.RA-self.parameters.radius
-                    elif RA2 > self.parameters.RA+self.parameters.radius:
-                        RAmax = self.parameters.RA+self.parameters.radius
-                    else:
-                        RAmax = RA2
-
-                    DEC1 = f(RAmin)
-                    DEC2 = f(RAmax)
-
-                    DECmin = numpy.max([DEC1,self.parameters.DEC-self.parameters.radius])
-                    DECmax = numpy.min([DEC2,self.parameters.DEC+self.parameters.radius])
-
-                    if DECmin != DECmax and RAmin != RAmax:
-                        f2 = scipy.interpolate.interp1d(numpy.array(RA_sat)*180/12.,time_sat,fill_value='extrapolate')
-                        timeRA = f2([RAmin,RAmax])
-                        f3 = scipy.interpolate.interp1d(DEC_sat,time_sat,fill_value='extrapolate')
-                        timeDEC = f3([DECmin,DECmax])
-
-                        if numpy.array_equal(timeRA.astype(int), timeDEC.astype(int)):
-                            # make sure the satellite is where we think it is!
-                            try:
-                                satDict = self.process_satellite(self.sats[i_sat],datetime.datetime.fromtimestamp(numpy.mean(timeRA)))
-                                mag_sat=satDict[i_sat]['MAG'][0]
-
-                                time0 = numpy.min(timeRA)
-                                if self.parameters.date.timestamp()+self.parameters.duration > time0 > self.parameters.date.timestamp():
-                                    # intercept FOV
-                                    if satDict[i_sat]['RA'][0]*180/12.< RAmax and satDict[i_sat]['RA'][0]*180./12. > RAmin:
-                                        if satDict[i_sat]['DEC'][0] < DECmax and satDict[i_sat]['DEC'][0] > DECmin:
-                                            if mag_sat != None:
-                                                sat_table.append([i_sat, datetime.datetime.strftime(datetime.datetime.fromtimestamp(time0),'%H:%M:%S'), abs(timeRA[1]-timeRA[0]), mag_sat, [RAmin,RAmax],[DECmin,DECmax]])
-                            except Exception:
-                                # satellite outside range
-                                pass
-
-        if len(sat_table)>0:
-            print("{: <30} {: <15} {: <15}{: <10}".format(*['Name', 'Time (UTC)', 'Duration (s)', 'Mag (V)']))
-            for row in sat_table:
-                print("{: <30} {: <15} {: <15.1f}{: <10.2f}".format(*row[:-2]))
         else:
-            print("No satellite intercept predicted")
+            for i_sat in satellite_dictionary.keys():
+                sat_table = self.print_satellite_dictionary_loop(i_sat, satellite_dictionary, RAtemp, sat_table)
+
+        if self.parameters.verbose == 1:
+            if len(sat_table)>0:
+                print("{: <30} {: <15} {: <15}{: <10}".format(*['Name', 'Time (UTC)', 'Duration (s)', 'Mag (V)']))
+                for row in sat_table:
+                    print("{: <30} {: <15} {: <15.1f}{: <10.2f}".format(*row[:-2]))
+            else:
+                print("No satellite intercept predicted")
+        
+        return sat_table
+
+    def print_satellite_dictionary_loop(self, i_sat, satellite_dictionary, RAtemp, sat_table):
+
+        mag_sat = satellite_dictionary[i_sat]['MAG'][0]
+        if mag_sat is not None:
+            RA_sat = satellite_dictionary[i_sat]['RA']
+            DEC_sat = satellite_dictionary[i_sat]['DEC']
+            if len(satellite_dictionary[i_sat]['Time']) > 1:
+                time_sat = []
+                for timeTemp in satellite_dictionary[i_sat]['Time']:
+                    time_sat.append(timeTemp.timestamp())
+
+                # find transit time through FoV
+                f = scipy.interpolate.interp1d(numpy.array(RA_sat)*180/12., DEC_sat, fill_value='extrapolate',kind='slinear')
+                DECextrap = f(RAtemp)
+
+                RA1 = RAtemp[numpy.argmin(abs(DECextrap-(self.parameters.DEC-self.parameters.radius)))]
+                RA2 = RAtemp[numpy.argmin(abs(DECextrap-(self.parameters.DEC+self.parameters.radius)))]
+                
+                if RA1 < self.parameters.RA-self.parameters.radius:
+                    RAmin = self.parameters.RA-self.parameters.radius
+                elif RA1 > self.parameters.RA+self.parameters.radius:
+                    RAmin = self.parameters.RA+self.parameters.radius
+                else:
+                    RAmin = RA1
+                if RA2 < self.parameters.RA-self.parameters.radius:
+                    RAmax = self.parameters.RA-self.parameters.radius
+                elif RA2 > self.parameters.RA+self.parameters.radius:
+                    RAmax = self.parameters.RA+self.parameters.radius
+                else:
+                    RAmax = RA2
+
+                DEC1 = f(RAmin)
+                DEC2 = f(RAmax)
+
+                DECmin = numpy.max([DEC1,self.parameters.DEC-self.parameters.radius])
+                DECmax = numpy.min([DEC2,self.parameters.DEC+self.parameters.radius])
+
+                if DECmin != DECmax and RAmin != RAmax:
+                    f2 = scipy.interpolate.interp1d(numpy.array(RA_sat)*180/12.,time_sat,fill_value='extrapolate')
+                    timeRA = f2([RAmin,RAmax])
+                    f3 = scipy.interpolate.interp1d(DEC_sat,time_sat,fill_value='extrapolate')
+                    timeDEC = f3([DECmin,DECmax])
+
+                    if numpy.array_equal(timeRA.astype(int), timeDEC.astype(int)):
+                        # make sure the satellite is where we think it is!
+                        try:
+                            satDict = self.process_satellite(self.sats[i_sat],datetime.datetime.fromtimestamp(numpy.mean(timeRA)))
+                            mag_sat=satDict[i_sat]['MAG'][0]
+
+                            time0 = numpy.min(timeRA)
+                            if self.parameters.date.timestamp()+self.parameters.duration > time0 > self.parameters.date.timestamp():
+                                # intercept FOV
+                                if satDict[i_sat]['RA'][0]*180/12.< RAmax and satDict[i_sat]['RA'][0]*180./12. > RAmin:
+                                    if satDict[i_sat]['DEC'][0] < DECmax and satDict[i_sat]['DEC'][0] > DECmin:
+                                        if mag_sat != None:
+                                            sat_table.append([i_sat, datetime.datetime.strftime(datetime.datetime.fromtimestamp(time0),'%H:%M:%S'), abs(timeRA[1]-timeRA[0]), mag_sat, [RAmin,RAmax],[DECmin,DECmax]])
+                        except Exception:
+                            # satellite outside range
+                            pass
         return sat_table
 
     def find_intercept_sats(self, Fmodel, timeStep=10):
@@ -268,10 +283,16 @@ class AstroSat:
 
         for timeStep in [timeStep, 1]:
             satDict = {}
-            for istep in track(range(0, int(self.parameters.duration), timeStep), description=f'propagating satellites ({cadence})...'):
-                dateTemp = self.parameters.date+datetime.timedelta(seconds=istep)
-                for isat in sats.keys():
-                    satDict = self.process_satellite(sats[isat], dateTemp, Fmodel, satDict)
+            if self.parameters.verbose == 1:
+                for istep in track(range(0, int(self.parameters.duration), timeStep), description=f'propagating satellites ({cadence})...'):
+                    dateTemp = self.parameters.date+datetime.timedelta(seconds=istep)
+                    for isat in sats.keys():
+                        satDict = self.process_satellite(sats[isat], dateTemp, Fmodel, satDict)
+            else:
+                for istep in range(0, int(self.parameters.duration), timeStep):
+                    dateTemp = self.parameters.date+datetime.timedelta(seconds=istep)
+                    for isat in sats.keys():
+                        satDict = self.process_satellite(sats[isat], dateTemp, Fmodel, satDict)
             sats = {sat_key:sats[sat_key] for sat_key in satDict.keys()}
             cadence = 'high resolution'
 
