@@ -2,7 +2,7 @@
 # example: Vega J2000
 # RA : '18:36:56.6'
 # DEC : '+38:47:08.6'
-ALT: '40:0:0'
+ALT: '45:0:0'
 AZ: '90:0:0'
 
 # Date
@@ -26,8 +26,8 @@ lon : 1.5849
 alt : 100. # 100.
 
 # FoV
-radius : 10.  # degrees
-duration : 3600 #3600  # seconds
+radius : 30.  # degrees
+duration : 60 #3600  # seconds
 
 # Plots
 Mmin : 0

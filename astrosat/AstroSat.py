@@ -203,13 +203,12 @@ class AstroSat:
             for i_sat in satellite_dictionary.keys():
                 sat_table = self.print_satellite_dictionary_loop(i_sat, satellite_dictionary, RAtemp, sat_table)
 
-        if self.parameters.verbose == 1:
-            if len(sat_table)>0:
-                print("{: <30} {: <15} {: <15}{: <10}".format(*['Name', 'Time (UTC)', 'Duration (s)', 'Mag (V)']))
-                for row in sat_table:
-                    print("{: <30} {: <15} {: <15.1f}{: <10.2f}".format(*row[:-2]))
-            else:
-                print("No satellite intercept predicted")
+        if len(sat_table)>0:
+            print("{: <30} {: <15} {: <15}{: <10}".format(*['Name', 'Time (UTC)', 'Duration (s)', 'Mag (V)']))
+            for row in sat_table:
+                print("{: <30} {: <15} {: <15.1f}{: <10.2f}".format(*row[:-2]))
+        else:
+            print("No satellite intercept predicted")
         
         return sat_table
 

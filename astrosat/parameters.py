@@ -57,8 +57,6 @@ class Parameters:
         else:
             raise TypeError('Observing pointing must be provided in either RA/DEC, or ALT/AZ format')
 
-        
-
         self.verbose = self.parameters_dict['verbose']
         self.logfile = self.parameters_dict['logfile']
         self.log_level = self.parameters_dict['log_level']
