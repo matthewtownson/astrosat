@@ -6,3 +6,4 @@ astroquery
 tqdm
 scipy
 pyyaml
+rich

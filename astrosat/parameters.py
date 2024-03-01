@@ -68,3 +68,26 @@ class Parameters:
             except yaml.YAMLError as exc:
                 print(exc)
         return parameters_dict
+    
+    def update_time(self):
+        if 'RA' and 'DEC' in self.parameters_dict:
+            logging.debug('Ra/Dec provided')
+            ra = self.parameters_dict['RA'].split(':')
+            dec = self.parameters_dict['DEC'].split(':')
+            self.RA = (numpy.array(ra).astype(float)*numpy.array([1, 1./60., 1./3600.])).sum()*180./12.
+            self.DEC = (numpy.array(dec).astype(float)*numpy.array([1, 1./60., 1./3600.])).sum()
+        elif 'ALT' and 'AZ' in self.parameters_dict:
+            logging.debug('Alt/Az provided, converting to Ra/Dec')
+            alt = self.parameters_dict['ALT'].split(':')
+            az = self.parameters_dict['AZ'].split(':')
+            alt = (numpy.array(alt).astype(float)*numpy.array([1, 1./60., 1./3600.])).sum()
+            az = (numpy.array(az).astype(float)*numpy.array([1, 1./60., 1./3600.])).sum()
+
+            # Use astropy to convert co-ordinates
+            c = SkyCoord(AltAz(alt=alt*u.degree, az=az*u.degree, location=self.location, obstime=self.date))
+            pointing = c.transform_to('icrs')
+            self.RA = pointing.ra.value
+            self.DEC = pointing.dec.value
+
+        else:
+            raise TypeError('Observing pointing must be provided in either RA/DEC, or ALT/AZ format')

@@ -165,27 +165,51 @@ class AstroSat:
                     # not if centre of Earth observer
                     mag_sat = None
         
-            if sat.name not in satDict.keys():
-                satDict[sat.name] = {}
-                satDict[sat.name]['RA'] = []
-                satDict[sat.name]['DEC'] = []
-                satDict[sat.name]['MAG'] = []
-                satDict[sat.name]['Time'] = []
-                satDict[sat.name]['sunElev'] = []
-                satDict[sat.name]['ALT'] = []
-                satDict[sat.name]['AZ'] = []
-                satDict[sat.name]['RANGE'] = []
-                satDict[sat.name]['ELEV'] = []
+            if self.parameters.duration > 1:
 
-            satDict[sat.name]['RA'].append(sat.ra*12./numpy.pi)
-            satDict[sat.name]['DEC'].append(sat.dec*180/numpy.pi)
-            satDict[sat.name]['MAG'].append(mag_sat)
-            satDict[sat.name]['Time'].append(date)
-            satDict[sat.name]['ALT'].append(sat.alt*180./numpy.pi)
-            satDict[sat.name]['AZ'].append(sat.az*180./numpy.pi)
-            satDict[sat.name]['sunElev'].append(self.sun.alt*180./numpy.pi)
-            satDict[sat.name]['RANGE'].append(sat.range)
-            satDict[sat.name]['ELEV'].append(sat.elevation)
+                if sat.name not in satDict.keys():
+                    satDict[sat.name] = {}
+                    satDict[sat.name]['RA'] = []
+                    satDict[sat.name]['DEC'] = []
+                    satDict[sat.name]['MAG'] = []
+                    satDict[sat.name]['Time'] = []
+                    satDict[sat.name]['sunElev'] = []
+                    satDict[sat.name]['ALT'] = []
+                    satDict[sat.name]['AZ'] = []
+                    satDict[sat.name]['RANGE'] = []
+                    satDict[sat.name]['ELEV'] = []
+
+                satDict[sat.name]['RA'].append(sat.ra*12./numpy.pi)
+                satDict[sat.name]['DEC'].append(sat.dec*180/numpy.pi)
+                satDict[sat.name]['MAG'].append(mag_sat)
+                satDict[sat.name]['Time'].append(date)
+                satDict[sat.name]['ALT'].append(sat.alt*180./numpy.pi)
+                satDict[sat.name]['AZ'].append(sat.az*180./numpy.pi)
+                satDict[sat.name]['sunElev'].append(self.sun.alt*180./numpy.pi)
+                satDict[sat.name]['RANGE'].append(sat.range)
+                satDict[sat.name]['ELEV'].append(sat.elevation)
+            else:
+                if sat.name not in satDict.keys():
+                    satDict[sat.name] = {}
+                    satDict[sat.name]['RA'] = []
+                    satDict[sat.name]['DEC'] = []
+                    satDict[sat.name]['MAG'] = []
+                    satDict[sat.name]['Time'] = []
+                    satDict[sat.name]['sunElev'] = []
+                    satDict[sat.name]['ALT'] = []
+                    satDict[sat.name]['AZ'] = []
+                    satDict[sat.name]['RANGE'] = []
+                    satDict[sat.name]['ELEV'] = []
+
+                satDict[sat.name]['RA'] = (sat.ra*12./numpy.pi)
+                satDict[sat.name]['DEC'] = (sat.dec*180/numpy.pi)
+                satDict[sat.name]['MAG'] = (mag_sat)
+                satDict[sat.name]['Time'] = (date)
+                satDict[sat.name]['ALT'] = (sat.alt*180./numpy.pi)
+                satDict[sat.name]['AZ'] = (sat.az*180./numpy.pi)
+                satDict[sat.name]['sunElev'] = (self.sun.alt*180./numpy.pi)
+                satDict[sat.name]['RANGE'] = (sat.range)
+                satDict[sat.name]['ELEV'] = (sat.elevation)
 
         return satDict
 
@@ -214,11 +238,14 @@ class AstroSat:
 
     def print_satellite_dictionary_loop(self, i_sat, satellite_dictionary, RAtemp, sat_table):
 
-        mag_sat = satellite_dictionary[i_sat]['MAG'][0]
+        if type(satellite_dictionary[i_sat]['MAG']) == list:
+            mag_sat = satellite_dictionary[i_sat]['MAG'][0]
+        else:
+            mag_sat = satellite_dictionary[i_sat]['MAG']
         if mag_sat is not None:
             RA_sat = satellite_dictionary[i_sat]['RA']
             DEC_sat = satellite_dictionary[i_sat]['DEC']
-            if len(satellite_dictionary[i_sat]['Time']) > 1:
+            if type(satellite_dictionary[i_sat]['Time']) == list:
                 time_sat = []
                 for timeTemp in satellite_dictionary[i_sat]['Time']:
                     time_sat.append(timeTemp.timestamp())
