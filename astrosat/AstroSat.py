@@ -24,6 +24,7 @@ class AstroSat:
             self.parameters = parameters
         self.search_radius = numpy.max([15.,self.parameters.radius])
         self.sun = ephem.Sun()
+        self.sun.compute(self.parameters.obs)
 
         logging.basicConfig(filename=self.parameters.logfile, encoding='utf-8', level=self.parameters.log_level)
 
@@ -111,8 +112,11 @@ class AstroSat:
 
         sat.compute(self.parameters.obs)
 
-        RA_angle_diff = (self.parameters.RA - sat.ra*180/numpy.pi + 180 + 360) % 360 - 180
-        DEC_angle_diff = (self.parameters.DEC - sat.dec*180/numpy.pi + 180 + 360) % 360 - 180
+        try:
+            RA_angle_diff = (self.parameters.RA - sat.ra*180/numpy.pi + 180 + 360) % 360 - 180
+            DEC_angle_diff = (self.parameters.DEC - sat.dec*180/numpy.pi + 180 + 360) % 360 - 180
+        except RuntimeError:
+            warnings.warn('Unable to compute satellite at %s, skipping' % date)
 
         if abs(RA_angle_diff) < self.search_radius and abs(DEC_angle_diff) < self.search_radius:
             self.sun.compute(self.parameters.obs)
